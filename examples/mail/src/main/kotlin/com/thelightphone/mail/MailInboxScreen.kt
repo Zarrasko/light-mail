@@ -93,7 +93,7 @@ class MailInboxScreen(
                                         .lightClickable {
                                             navigateTo(screenFactory = {
                                                 MailMessageScreen(it, account, summary)
-                                            })
+                                            }) { deleted -> if (deleted) viewModel.reload() }
                                         }
                                         .padding(vertical = 0.75f.gridUnitsAsDp()),
                                 )

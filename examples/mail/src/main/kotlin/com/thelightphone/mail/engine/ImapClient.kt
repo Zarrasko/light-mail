@@ -106,6 +106,22 @@ class ImapClient(
         MimeBodyParser.extractReadableText(rawBody, headers)
     }
 
+    /**
+     * Permanently deletes the message with the given UID: flags it `\Deleted`, then expunges.
+     * Uses plain `EXPUNGE` rather than `UID EXPUNGE` (a UIDPLUS extension not guaranteed to be
+     * present), so this also removes any other message a caller happened to flag `\Deleted` -
+     * harmless here since nothing else in this client ever sets that flag.
+     */
+    suspend fun deleteMessage(uid: Long) = withContext(Dispatchers.IO) {
+        val storeTag = nextTag()
+        sendCommand(storeTag, "UID STORE $uid +FLAGS (\\Deleted)")
+        readUntilTagged(storeTag)
+
+        val expungeTag = nextTag()
+        sendCommand(expungeTag, "EXPUNGE")
+        readUntilTagged(expungeTag)
+    }
+
     suspend fun logout() = withContext(Dispatchers.IO) {
         runCatching {
             val tag = nextTag()

@@ -29,7 +29,7 @@ class MailMessageScreen(
     sealedActivity: SealedLightActivity,
     private val account: MailAccount,
     private val summary: ImapMessageSummary,
-) : LightScreen<Unit, MailMessageViewModel>(sealedActivity) {
+) : LightScreen<Boolean, MailMessageViewModel>(sealedActivity) {
 
     override val viewModelClass: Class<MailMessageViewModel>
         get() = MailMessageViewModel::class.java
@@ -50,7 +50,7 @@ class MailMessageScreen(
                     .background(LightThemeTokens.colors.background),
             ) {
                 LightTopBar(
-                    leftButton = LightBarButton.LightIcon(icon = LightIcons.BACK, onClick = { goBack(Unit) }),
+                    leftButton = LightBarButton.LightIcon(icon = LightIcons.BACK, onClick = { goBack(false) }),
                     center = LightTopBarCenter.Text(summary.from.ifBlank { "Message" }),
                     modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
                 )
@@ -87,6 +87,14 @@ class MailMessageScreen(
 
                 LightBottomBar(
                     listOf(
+                        LightBarButton.LightIcon(
+                            icon = LightIcons.TRASH,
+                            onClick = {
+                                navigateTo(screenFactory = {
+                                    MailConfirmDeleteMessageScreen(it, account, summary)
+                                }) { deleted -> if (deleted) goBack(true) }
+                            },
+                        ),
                         LightBarButton.LightIcon(
                             icon = LightIcons.COMPOSE_MESSAGE,
                             onClick = {

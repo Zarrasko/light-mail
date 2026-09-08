@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 class MailMessageViewModel(
     private val account: MailAccount,
     private val uid: Long,
-) : LightViewModel<Unit>() {
+) : LightViewModel<Boolean>() {
 
     private val _body = MutableStateFlow<String?>(null)
     val body: StateFlow<String?> = _body.asStateFlow()
@@ -26,7 +26,7 @@ class MailMessageViewModel(
 
     private var loaded = false
 
-    override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
+    override fun onScreenShow(screen: SimpleLightScreen<Boolean>) {
         if (loaded) return
         loaded = true
         viewModelScope.launch(Dispatchers.IO) {
