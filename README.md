@@ -1,12 +1,48 @@
-# light-sdk
-or: a tool for building Tools
+# Mail
 
-## tl;dr
+A minimal email client for the Light Phone III — IMAP/SMTP with plain LOGIN auth (no OAuth), multi-account support, and server autodiscovery from just an email address and password.
+
+*Screenshots below use a fabricated demo account and messages — no real inbox content.*
+
+| Accounts | Inbox | Message |
+|---|---|---|
+| ![Accounts](examples/mail/screenshots/accounts.png) | ![Inbox](examples/mail/screenshots/inbox.png) | ![Message](examples/mail/screenshots/message.png) |
+
+| Compose | Add Account | Settings |
+|---|---|---|
+| ![Compose](examples/mail/screenshots/compose.png) | ![Add Account](examples/mail/screenshots/add-account.png) | ![Settings](examples/mail/screenshots/settings.png) |
+
+## Features
+
+- **Multi-account inbox** over IMAP/SMTP. Works with providers that support app-specific passwords (Fastmail, iCloud, Yahoo, Zoho, self-hosted, etc.) - no OAuth, so most Gmail/Outlook accounts won't authenticate.
+- **Server autodiscovery** - enter just an email and password; IMAP/SMTP host and port are resolved automatically from a small known-provider table, falling back to Mozilla's public autoconfig service. Manual entry is still there if neither finds a match.
+- **Universal and per-account settings** for how many messages to show (10/20/50/Unlimited) and whether notifications are on - a global "off" always wins over a per-account "on".
+- **Background sync with local notifications**, polling every 15 minutes (WorkManager's floor for periodic work - there's no IMAP IDLE/push here).
+- **Keyboard-aware compose editor** that scrolls to keep the cursor visible above the on-screen keyboard as you type.
+
+The IMAP/SMTP/MIME engine is written from scratch in Kotlin (see [examples/mail/src/main/kotlin/com/thelightphone/mail/engine](examples/mail/src/main/kotlin/com/thelightphone/mail/engine)) - no vendored dependencies, built entirely on the JDK's own sockets/TLS plus already-allowed libraries.
+
+## Running it
+
+```bash
+./gradlew :examples:mail:installDebug
+adb shell am start -n com.thelightphone.mail/com.thelightphone.sdk.LightActivity
+```
+
+See [examples/README.md](examples/README.md) for more.
+
+---
+
+## About this repository
+
+This is a fork of [Light's SDK](https://github.com/lightphone/light-sdk) for building Tools for the Light Phone III, trimmed down to just this one tool (the `sdk:*` modules it depends on to build are kept). The sections below are Light's own SDK documentation, carried over from upstream.
+
+### tl;dr
 This repository contains the scaffolding for building simple tools for the Light Phone III. Included are a library ([:sdk:client](./sdk/client)) and placeholder application ([:tool](./tool)) that depends on it. To create a tool that is fully compatible with LightOS, you must write your application code within the `tool` module, using the primitives provided by the sdk client library.
 
 You can and should use current Android best practices: Kotlin for all source code, Compose for UI, Coroutines for async programming, and MVVM architecture. **Although this is appears to be a fairly standard Android dev environment, you will quickly find out that we are (gently but broadly) restricting which Android APIs and third-party libraries can be used. This is in an effort to provide a secure and distinctly _light_ experience for our users. These restrictions are _not_ set in stone and should ease up over time. If there is a stable, open-source library that you'd like us to allow, please let us know! More on this later.**
 
-## IMPORTANT!! July 1, 2026 Update
+### IMPORTANT!! July 1, 2026 Update
 If you're reading this, welcome! You're early! (in a cool way)
 This repo is a work-in-progress and will remain so for a while. Things are going to change _fast_ in the coming weeks. If you're going to start building right away, be sure to `git pull` frequently.
 Before you do, though, please be aware that **while we feel good about letting everybody start to explore and build, we are still working on the infrastructure to properly deploy your new tools.**
@@ -15,9 +51,9 @@ Light Phone III, you can totally do that with whatever you do here! But we're sh
 We're hoping to have an update on that front later this month. In the meantime, the best way to start working is to use an Android emulator running our new [LightOS Emulator](sdk/emulator). The instructions for getting that up and running
 are [right here](docs/system_app).
 
-## Quickstart
+### Quickstart
 
-### Running your Tool
+#### Running your Tool
 **You can test your tool on any Android device or emulator**, but certain functionality (receiving push notifications, requesting special permissions) can only be tested with:
 A) Real Light Phone hardware running LightOS
 B) An Android emulator (on your computer) set up to run our LightOS emulator app as a _system app_ ([see advanced instructions](docs/system_app))
@@ -27,7 +63,7 @@ You can quickly [create an emulator](https://developer.android.com/studio/run/ma
 * Android API 34
 * NO Google Play Services installed
 
-### Start Building
+#### Start Building
 1. Fork and/or clone this repository into your local dev environment.
 2. Install Android Studio and open this project within it. (IntelliJ IDEA should also work)
 
@@ -49,4 +85,4 @@ Once we release a version of LightOS that supports community tools, users will h
 - **SDK-built tools**: This is a slightly more permissive choice. Phones with this option selected will install and launch any tool that was built and signed by Light. These don't require any manual approval by us (though we can block them in extreme cases). If a user wants to be able to install a tool that was shared locally or somewhere outside of Light's dashboard, but they still want to be confident that it will run well and integrate nicely with LightOS, they might choose this option!
 - **Any tools**: A user will have the option to make any APK launchable from LightOS, but they will own the responsibility of getting them un/installed. When a user selects this option, we will be warning them that they are potentially opening their device up to security risks, and in doing so will limit our ability to support them if something goes wrong.
 
-## [Complete Documentation](./docs)
+### [Complete Documentation](./docs)
