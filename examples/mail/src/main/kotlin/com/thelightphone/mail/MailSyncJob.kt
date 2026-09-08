@@ -8,6 +8,7 @@ import com.thelightphone.sdk.LightJobResult
 import com.thelightphone.sdk.SealedLightContext
 import com.thelightphone.sdk.buildDatabase
 import com.thelightphone.sdk.postNotification
+import kotlinx.coroutines.flow.first
 
 const val MAIL_SYNC_JOB_KEY = "mail-sync"
 private const val NOTIFICATION_CHANNEL_ID = "new_mail"
@@ -30,8 +31,11 @@ val mailSyncJob: LightJobHandler = { lightContext, _ ->
         )
     }
 
+    val settingsRepository = MailSettingsRepository.from(lightContext)
+    val notificationsEnabledGlobally = settingsRepository.notificationsEnabled.first()
+
     for (account in repository.listAccounts()) {
-        checkAccountForNewMail(lightContext, repository, account)
+        checkAccountForNewMail(lightContext, repository, account, notificationsEnabledGlobally)
     }
 
     LightJobResult.Success()
@@ -41,6 +45,7 @@ private suspend fun checkAccountForNewMail(
     lightContext: SealedLightContext,
     repository: MailAccountRepository,
     account: MailAccount,
+    notificationsEnabledGlobally: Boolean,
 ) {
     val client = ImapClient(account.imapHost, account.imapPort)
     try {
@@ -61,7 +66,7 @@ private suspend fun checkAccountForNewMail(
         }
 
         val newMessages = summaries.filter { it.uid > account.lastSeenUid }
-        if (newMessages.isNotEmpty()) {
+        if (newMessages.isNotEmpty() && notificationsEnabledGlobally && account.notificationsEnabled) {
             postNewMailNotification(lightContext, account, newMessages)
         }
         repository.updateLastSeenUid(account.id, newestUid)

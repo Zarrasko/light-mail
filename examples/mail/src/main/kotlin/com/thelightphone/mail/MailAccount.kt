@@ -11,4 +11,6 @@ data class MailAccount(
     val smtpPort: Int = 465,
     val smtpUseStartTls: Boolean = false,
     val lastSeenUid: Long = 0,
+    val messageLimitOverride: Int? = null,
+    val notificationsEnabled: Boolean = true,
 )

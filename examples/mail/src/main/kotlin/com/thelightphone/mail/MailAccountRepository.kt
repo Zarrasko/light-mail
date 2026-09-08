@@ -32,6 +32,14 @@ class MailAccountRepository private constructor(
         dao.updateLastSeenUid(id, uid)
     }
 
+    suspend fun updateMessageLimitOverride(id: Long, limit: Int?) {
+        dao.updateMessageLimitOverride(id, limit)
+    }
+
+    suspend fun updateNotificationsEnabled(id: Long, enabled: Boolean) {
+        dao.updateNotificationsEnabled(id, enabled)
+    }
+
     private fun MailAccountEntity.toAccount() = MailAccount(
         id = id,
         email = email,
@@ -42,6 +50,8 @@ class MailAccountRepository private constructor(
         smtpPort = smtpPort,
         smtpUseStartTls = smtpUseStartTls,
         lastSeenUid = lastSeenUid,
+        messageLimitOverride = messageLimitOverride,
+        notificationsEnabled = notificationsEnabled,
     )
 
     companion object {

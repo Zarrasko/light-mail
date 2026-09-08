@@ -16,4 +16,8 @@ data class MailAccountEntity(
     @ColumnInfo(name = "smtp_use_start_tls") val smtpUseStartTls: Boolean,
     /** Highest inbox UID seen by the last background sync; 0 means never synced yet. */
     @ColumnInfo(name = "last_seen_uid", defaultValue = "0") val lastSeenUid: Long = 0,
+    /** Overrides [MailSettingsRepository.defaultMessageLimit]'s count for this account; null inherits it. */
+    @ColumnInfo(name = "message_limit_override") val messageLimitOverride: Int? = null,
+    /** ANDed with [MailSettingsRepository.notificationsEnabled] - a global "off" always wins. */
+    @ColumnInfo(name = "notifications_enabled", defaultValue = "1") val notificationsEnabled: Boolean = true,
 )

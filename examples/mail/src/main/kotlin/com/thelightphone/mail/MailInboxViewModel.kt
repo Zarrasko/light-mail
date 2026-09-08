@@ -9,10 +9,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MailInboxViewModel(
     private val account: MailAccount,
+    private val settingsRepository: MailSettingsRepository,
 ) : LightViewModel<Unit>() {
 
     private val _messages = MutableStateFlow<List<ImapMessageSummary>>(emptyList())
@@ -44,9 +46,13 @@ class MailInboxViewModel(
             client.connect()
             client.login(account.email, account.password)
             val messageCount = client.selectInbox()
-            _messages.value = if (messageCount > 0) {
-                val start = maxOf(1, messageCount - MAX_MESSAGES_SHOWN + 1)
-                client.fetchSummaries("$start:$messageCount").sortedByDescending { it.uid }
+
+            val globalDefault = settingsRepository.defaultMessageLimit.first()
+            val limit = MailInboxFetchPlanner.effectiveLimit(account.messageLimitOverride, globalDefault)
+            val range = MailInboxFetchPlanner.sequenceRangeFor(messageCount, limit)
+
+            _messages.value = if (range != null) {
+                client.fetchSummaries(range).sortedByDescending { it.uid }
             } else {
                 emptyList()
             }
@@ -56,9 +62,5 @@ class MailInboxViewModel(
             client.logout()
             _isLoading.value = false
         }
-    }
-
-    companion object {
-        private const val MAX_MESSAGES_SHOWN = 20
     }
 }
