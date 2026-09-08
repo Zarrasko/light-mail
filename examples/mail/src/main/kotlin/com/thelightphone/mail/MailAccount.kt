@@ -4,7 +4,7 @@ package com.thelightphone.mail
 data class MailAccount(
     val id: Long = 0,
     val email: String,
-    val password: String,
+    val password: String = "",
     val imapHost: String,
     val imapPort: Int = 993,
     val smtpHost: String,
@@ -13,4 +13,7 @@ data class MailAccount(
     val lastSeenUid: Long = 0,
     val messageLimitOverride: Int? = null,
     val notificationsEnabled: Boolean = true,
+    val authType: MailAuthType = MailAuthType.PASSWORD,
+    /** Only set when [authType] is [MailAuthType.MICROSOFT_OAUTH]; access tokens aren't persisted. */
+    val microsoftRefreshToken: String = "",
 )

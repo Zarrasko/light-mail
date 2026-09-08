@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 class MailMessageViewModel(
     private val account: MailAccount,
     private val uid: Long,
+    private val accountRepository: MailAccountRepository,
 ) : LightViewModel<Boolean>() {
 
     private val _body = MutableStateFlow<String?>(null)
@@ -33,7 +34,7 @@ class MailMessageViewModel(
             val client = ImapClient(account.imapHost, account.imapPort)
             try {
                 client.connect()
-                client.login(account.email, account.password)
+                client.loginFor(account, accountRepository)
                 client.selectInbox()
                 _body.value = client.fetchPlainTextBody(uid)
             } catch (e: Exception) {

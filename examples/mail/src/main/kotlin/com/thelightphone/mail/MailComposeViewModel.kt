@@ -17,6 +17,7 @@ data class MailComposeForm(
 
 class MailComposeViewModel(
     private val account: MailAccount,
+    private val accountRepository: MailAccountRepository,
     initialTo: String = "",
     initialSubject: String = "",
 ) : LightViewModel<Unit>() {
@@ -50,7 +51,7 @@ class MailComposeViewModel(
             val client = SmtpClient(account.smtpHost, account.smtpPort, account.smtpUseStartTls)
             try {
                 client.connect()
-                client.authenticatePlain(account.email, account.password)
+                client.authenticateFor(account, accountRepository)
                 client.sendPlainTextMessage(
                     from = account.email,
                     to = current.to,

@@ -3,6 +3,7 @@ package com.thelightphone.mail.engine
 import java.io.BufferedOutputStream
 import java.io.OutputStream
 import java.net.Socket
+import java.util.Base64
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.SSLSocketFactory
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +24,6 @@ class ImapCommandException(message: String) : Exception(message)
  * inbox's most recent messages, and fetch one message's plain-text body.
  *
  * No IDLE/push, no folder management beyond INBOX, no multipart/attachment handling.
- * XOAUTH2 is not implemented, so provider accounts that require OAuth for IMAP
- * (most Gmail/Outlook accounts) need an app-specific password instead.
  */
 class ImapClient(
     private val host: String,
@@ -56,6 +55,30 @@ class ImapClient(
         val tag = nextTag()
         sendCommand(tag, "LOGIN ${quote(username)} ${quote(password)}")
         readUntilTagged(tag)
+    }
+
+    /** Logs in via SASL XOAUTH2 (RFC 7628) with a bearer access token instead of a password. */
+    suspend fun loginXOAuth2(username: String, accessToken: String) = withContext(Dispatchers.IO) {
+        val tag = nextTag()
+        sendCommand(tag, "AUTHENTICATE XOAUTH2 ${xoauth2SaslResponse(username, accessToken)}")
+
+        val first = reader.readLine() ?: throw ImapCommandException("Connection closed mid-response")
+        when {
+            first.startsWith("+") -> {
+                // The server rejected the token and is asking for a continuation (RFC 7628
+                // 3.2.3); send an empty response so it emits the final tagged failure instead
+                // of hanging.
+                writer.write("\r\n".toByteArray(Charsets.UTF_8))
+                writer.flush()
+                readUntilTagged(tag)
+            }
+            first.startsWith("$tag ") -> {
+                if (!first.startsWith("$tag OK", ignoreCase = true)) {
+                    throw ImapCommandException("Command failed: $first")
+                }
+            }
+            else -> readUntilTagged(tag)
+        }
     }
 
     /** Selects INBOX and returns the number of messages in it. */
@@ -152,4 +175,10 @@ class ImapClient(
     private fun nextTag() = "A%04d".format(tagCounter.getAndIncrement())
 
     private fun quote(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+    private fun xoauth2SaslResponse(username: String, accessToken: String): String {
+        // RFC 7628 3.1: fields are separated by CTL-A (\u0001), with a trailing pair of them.
+        val raw = "user=$username\u0001auth=Bearer $accessToken\u0001\u0001"
+        return Base64.getEncoder().encodeToString(raw.toByteArray(Charsets.UTF_8))
+    }
 }

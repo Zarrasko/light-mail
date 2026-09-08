@@ -20,6 +20,7 @@ import com.thelightphone.mail.engine.ImapClient
 import com.thelightphone.mail.engine.ImapMessageSummary
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.SimpleLightScreen
+import com.thelightphone.sdk.buildDatabase
 import com.thelightphone.sdk.ui.LightBarButton
 import com.thelightphone.sdk.ui.LightBottomBar
 import com.thelightphone.sdk.ui.LightFullscreenModal
@@ -41,6 +42,10 @@ class MailConfirmDeleteMessageScreen(
     private val account: MailAccount,
     private val summary: ImapMessageSummary,
 ) : SimpleLightScreen<Boolean>(sealedActivity) {
+
+    private val accountRepository = MailAccountRepository.getInstance {
+        lightContext.buildDatabase(MailDatabase::class.java, MailAccountRepository.DATABASE_NAME, MAIL_DATABASE_MIGRATIONS)
+    }
 
     @Composable
     override fun Content() {
@@ -89,7 +94,7 @@ class MailConfirmDeleteMessageScreen(
                                         try {
                                             withContext(Dispatchers.IO) {
                                                 client.connect()
-                                                client.login(account.email, account.password)
+                                                client.loginFor(account, accountRepository)
                                                 client.selectInbox()
                                                 client.deleteMessage(summary.uid)
                                             }

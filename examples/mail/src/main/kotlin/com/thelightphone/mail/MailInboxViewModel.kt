@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 class MailInboxViewModel(
     private val account: MailAccount,
     private val settingsRepository: MailSettingsRepository,
+    private val accountRepository: MailAccountRepository,
 ) : LightViewModel<Unit>() {
 
     private val _messages = MutableStateFlow<List<ImapMessageSummary>>(emptyList())
@@ -44,7 +45,7 @@ class MailInboxViewModel(
         val client = ImapClient(account.imapHost, account.imapPort)
         try {
             client.connect()
-            client.login(account.email, account.password)
+            client.loginFor(account, accountRepository)
             val messageCount = client.selectInbox()
 
             val globalDefault = settingsRepository.defaultMessageLimit.first()

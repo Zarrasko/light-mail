@@ -71,6 +71,19 @@ class MailAccountSetupScreen(sealedActivity: SealedLightActivity) :
                             .fillMaxWidth()
                             .padding(horizontal = 1f.gridUnitsAsDp()),
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .lightClickable {
+                                    navigateTo(screenFactory = { MailMicrosoftSignInScreen(it) }) { signedIn ->
+                                        if (signedIn) goBack(true)
+                                    }
+                                }
+                                .padding(vertical = 0.75f.gridUnitsAsDp()),
+                        ) {
+                            LightText(text = "Sign in with Microsoft", variant = LightTextVariant.Subheading)
+                            LightText(text = "For Outlook or Microsoft 365 accounts", variant = LightTextVariant.Detail)
+                        }
                         SetupFieldRow("Email", form.email.ifBlank { "not set" }) {
                             editField("Email", form.email) { value -> viewModel.updateEmail(value) }
                         }

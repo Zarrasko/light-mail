@@ -50,7 +50,7 @@ private suspend fun checkAccountForNewMail(
     val client = ImapClient(account.imapHost, account.imapPort)
     try {
         client.connect()
-        client.login(account.email, account.password)
+        client.loginFor(account, repository)
         val messageCount = client.selectInbox()
         if (messageCount == 0) return
 

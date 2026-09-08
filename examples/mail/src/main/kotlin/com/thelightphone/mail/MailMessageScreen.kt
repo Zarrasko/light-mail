@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import com.thelightphone.mail.engine.ImapMessageSummary
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.SealedLightActivity
+import com.thelightphone.sdk.buildDatabase
 import com.thelightphone.sdk.ui.LightBarButton
 import com.thelightphone.sdk.ui.LightBottomBar
 import com.thelightphone.sdk.ui.LightIcons
@@ -31,10 +32,14 @@ class MailMessageScreen(
     private val summary: ImapMessageSummary,
 ) : LightScreen<Boolean, MailMessageViewModel>(sealedActivity) {
 
+    private val accountRepository = MailAccountRepository.getInstance {
+        lightContext.buildDatabase(MailDatabase::class.java, MailAccountRepository.DATABASE_NAME, MAIL_DATABASE_MIGRATIONS)
+    }
+
     override val viewModelClass: Class<MailMessageViewModel>
         get() = MailMessageViewModel::class.java
 
-    override fun createViewModel() = MailMessageViewModel(account, summary.uid)
+    override fun createViewModel() = MailMessageViewModel(account, summary.uid, accountRepository)
 
     @Composable
     override fun Content() {

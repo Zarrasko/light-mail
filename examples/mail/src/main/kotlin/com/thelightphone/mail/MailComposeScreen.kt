@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.SealedLightActivity
+import com.thelightphone.sdk.buildDatabase
 import com.thelightphone.sdk.ui.LightBarButton
 import com.thelightphone.sdk.ui.LightBottomBar
 import com.thelightphone.sdk.ui.LightFullscreenModal
@@ -34,10 +35,14 @@ class MailComposeScreen(
     private val prefillSubject: String = "",
 ) : LightScreen<Unit, MailComposeViewModel>(sealedActivity) {
 
+    private val accountRepository = MailAccountRepository.getInstance {
+        lightContext.buildDatabase(MailDatabase::class.java, MailAccountRepository.DATABASE_NAME, MAIL_DATABASE_MIGRATIONS)
+    }
+
     override val viewModelClass: Class<MailComposeViewModel>
         get() = MailComposeViewModel::class.java
 
-    override fun createViewModel() = MailComposeViewModel(account, prefillTo, prefillSubject)
+    override fun createViewModel() = MailComposeViewModel(account, accountRepository, prefillTo, prefillSubject)
 
     @Composable
     override fun Content() {

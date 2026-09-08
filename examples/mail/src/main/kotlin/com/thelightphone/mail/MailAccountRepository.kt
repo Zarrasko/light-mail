@@ -20,6 +20,10 @@ class MailAccountRepository private constructor(
                 smtpHost = account.smtpHost,
                 smtpPort = account.smtpPort,
                 smtpUseStartTls = account.smtpUseStartTls,
+                authType = account.authType.name,
+                encryptedMicrosoftRefreshToken = account.microsoftRefreshToken
+                    .takeIf { it.isNotEmpty() }
+                    ?.let(cipher::encrypt),
             ),
         )
     }
@@ -40,6 +44,11 @@ class MailAccountRepository private constructor(
         dao.updateNotificationsEnabled(id, enabled)
     }
 
+    /** Microsoft rotates the refresh token on every use; call this after every token refresh. */
+    suspend fun updateMicrosoftRefreshToken(id: Long, refreshToken: String) {
+        dao.updateMicrosoftRefreshToken(id, cipher.encrypt(refreshToken))
+    }
+
     private fun MailAccountEntity.toAccount() = MailAccount(
         id = id,
         email = email,
@@ -52,6 +61,8 @@ class MailAccountRepository private constructor(
         lastSeenUid = lastSeenUid,
         messageLimitOverride = messageLimitOverride,
         notificationsEnabled = notificationsEnabled,
+        authType = MailAuthType.valueOf(authType),
+        microsoftRefreshToken = encryptedMicrosoftRefreshToken?.let(cipher::decrypt).orEmpty(),
     )
 
     companion object {

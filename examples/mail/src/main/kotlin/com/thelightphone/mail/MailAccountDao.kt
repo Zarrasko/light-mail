@@ -26,4 +26,7 @@ interface MailAccountDao {
 
     @Query("UPDATE mail_account SET notifications_enabled = :enabled WHERE id = :id")
     suspend fun updateNotificationsEnabled(id: Long, enabled: Boolean)
+
+    @Query("UPDATE mail_account SET encrypted_microsoft_refresh_token = :token WHERE id = :id")
+    suspend fun updateMicrosoftRefreshToken(id: Long, token: ByteArray)
 }

@@ -58,6 +58,7 @@ kotlin {
 
 dependencies {
     implementation(project(":sdk:client"))
+    implementation(project(":sdk:mailengine"))
     implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.datetime)

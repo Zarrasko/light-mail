@@ -20,4 +20,7 @@ data class MailAccountEntity(
     @ColumnInfo(name = "message_limit_override") val messageLimitOverride: Int? = null,
     /** ANDed with [MailSettingsRepository.notificationsEnabled] - a global "off" always wins. */
     @ColumnInfo(name = "notifications_enabled", defaultValue = "1") val notificationsEnabled: Boolean = true,
+    @ColumnInfo(name = "auth_type", defaultValue = "PASSWORD") val authType: String = "PASSWORD",
+    /** Encrypted like [encryptedPassword]; only set for [MailAuthType.MICROSOFT_OAUTH] accounts. */
+    @ColumnInfo(name = "encrypted_microsoft_refresh_token") val encryptedMicrosoftRefreshToken: ByteArray? = null,
 )
