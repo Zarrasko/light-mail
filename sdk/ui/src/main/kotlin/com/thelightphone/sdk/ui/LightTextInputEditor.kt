@@ -5,11 +5,16 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +63,7 @@ fun LightTextInputEditor(
     singleLine: Boolean = false,
     initialCaps: Boolean = false,
     editorKey: Any = remember { Any() },
+    textStyle: TextStyle = lightInputTextStyle(),
 ) {
     val currentOnSubmit by rememberUpdatedState(onSubmit)
     val hapticsEnabled = LocalHapticsEnabled.current
@@ -90,6 +96,7 @@ fun LightTextInputEditor(
         submitIcon,
         showBackButton,
         singleLine,
+        textStyle,
     )
 }
 
@@ -112,10 +119,13 @@ fun LightTextInputEditor(
     submitIcon: LightIconConfiguration? = null,
     showBackButton: Boolean = true,
     singleLine: Boolean = false,
+    textStyle: TextStyle = lightInputTextStyle(),
 ) {
     val colors = LightThemeTokens.colors
-    val inputStyle = lightInputTextStyle()
+    val inputStyle = textStyle
     var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val scrollState = rememberScrollState()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     Surface {
         Column(modifier = modifier.fillMaxSize()) {
@@ -137,6 +147,8 @@ fun LightTextInputEditor(
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 2f.gridUnitsAsDp())
+                    .verticalScroll(scrollState)
+                    .bringIntoViewRequester(bringIntoViewRequester)
                     .pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
@@ -191,6 +203,13 @@ fun LightTextInputEditor(
                             .height(with(LocalDensity.current) { rect.height.toDp() })
                             .background(colors.content),
                     )
+
+                    // Typewriter-style follow: whenever the cursor moves (typing, or tapping
+                    // elsewhere in the text), scroll just enough to keep it visible above the
+                    // keyboard instead of letting long input overflow underneath it.
+                    LaunchedEffect(rect) {
+                        bringIntoViewRequester.bringIntoView(rect)
+                    }
                 }
             }
 
@@ -241,11 +260,15 @@ private fun factory(
 
     }
 
+/**
+ * The default text style for [LightTextInputEditor]'s input area, or [base] with the same
+ * coloring/screen-height scaling applied - use this to get a differently-sized input (e.g. a
+ * smaller style for a long-form field) without losing that scaling.
+ */
 @Composable
-private fun lightInputTextStyle(): TextStyle {
+fun lightInputTextStyle(base: TextStyle = LightThemeTokens.typography.heading): TextStyle {
     val colors = LightThemeTokens.colors
-    val t = LightThemeTokens.typography
-    return t.heading
+    return base
         .copy(
             color = colors.content,
         )
