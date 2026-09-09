@@ -9,17 +9,17 @@ data class MailFolder(val label: String, val imapName: String) {
     }
 }
 
-/** Per-account visibility + [ImapClient.resolveFolder] result for one special-use folder. */
+/** Per-account visibility + resolved-name result for one special-use folder. */
 data class MailFolderState(
     val shown: Boolean = false,
-    /** Cached provider-specific IMAP name; null until [MailSpecialFolderType.resolve] succeeds. */
+    /** Cached provider-specific IMAP name; null until resolution succeeds. */
     val resolvedName: String? = null,
 )
 
-enum class MailSpecialFolderType(val label: String, val candidates: List<String>) {
-    SENT("Sent", SpecialFolders.SENT_CANDIDATES),
-    DRAFTS("Drafts", SpecialFolders.DRAFTS_CANDIDATES),
-    TRASH("Trash", SpecialFolders.TRASH_CANDIDATES),
+enum class MailSpecialFolderType(val label: String, val specialUseFlag: String, val candidates: List<String>) {
+    SENT("Sent", "\\Sent", SpecialFolders.SENT_CANDIDATES),
+    DRAFTS("Drafts", "\\Drafts", SpecialFolders.DRAFTS_CANDIDATES),
+    TRASH("Trash", "\\Trash", SpecialFolders.TRASH_CANDIDATES),
 }
 
 /** The folders this account should show, beyond the always-present Inbox. */

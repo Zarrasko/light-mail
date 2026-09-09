@@ -19,13 +19,19 @@ data class ImapMessageSummary(
 
 class ImapCommandException(message: String) : Exception(message)
 
+/** One entry from an IMAP `LIST` response: its name and any flags (e.g. `\Sent`) it carries. */
+data class ImapListedFolder(val name: String, val flags: Set<String>)
+
+/** Matches `* LIST (\flag \flag) "delim" name` - name may or may not be quoted. */
+private val LIST_LINE_REGEX = Regex("""^\* LIST \(([^)]*)\) "([^"]*)" (.+)$""")
+
 /**
  * A minimal, narrowly-scoped IMAP4rev1 (RFC 3501) client: connect, log in, list a folder's most
  * recent messages, and fetch one message's plain-text body.
  *
  * No IDLE/push, no multipart/attachment handling. Folder support is limited to SELECTing a
- * folder by name - there's no LIST command, so [resolveFolder] guesses a provider's name for a
- * special-use folder (Sent, Drafts, Trash) from a candidate list instead of asking the server.
+ * folder by name, plus enough of LIST to discover a special-use folder's real name (see
+ * [resolveSpecialUseFolder]) rather than guess it.
  */
 class ImapClient(
     private val host: String,
@@ -97,9 +103,11 @@ class ImapClient(
 
     /**
      * Tries each candidate name in order and returns the first that SELECTs successfully, or
-     * null if none exist. There's no LIST command here, so this is how a provider's name for a
-     * special-use folder (Sent, Drafts, Trash) gets guessed instead of discovered - it won't
-     * find an uncommonly-named folder.
+     * null if none exist. This is a last-resort guess for when the server doesn't support
+     * SPECIAL-USE (see [resolveSpecialUseFolder]) - if a provider happens to have more than one
+     * folder matching the candidate list (e.g. a real "Sent" folder plus an empty "Sent Items"
+     * left over from a migration), this can lock onto the wrong one, since it has no way to
+     * tell them apart beyond which name happens to exist first.
      */
     suspend fun resolveFolder(candidates: List<String>): String? = withContext(Dispatchers.IO) {
         for (candidate in candidates) {
@@ -114,6 +122,52 @@ class ImapClient(
             if (found) return@withContext candidate
         }
         null
+    }
+
+    /**
+     * Resolves the folder for a special use (e.g. "\Sent", "\Drafts", "\Trash") using the
+     * server's own SPECIAL-USE tagging (RFC 6154) when it supports the extension - this is what
+     * a real mail client uses to find these folders, so it's authoritative where [resolveFolder]
+     * is just a guess. Falls back to [candidates] only when the server doesn't support
+     * SPECIAL-USE at all.
+     */
+    suspend fun resolveSpecialUseFolder(useFlag: String, candidates: List<String>): String? =
+        withContext(Dispatchers.IO) {
+            val folders = listFoldersWithSpecialUse()
+            val flagged = folders?.firstOrNull { useFlag in it.flags }
+            flagged?.name ?: resolveFolder(candidates)
+        }
+
+    /**
+     * Lists every folder with its SPECIAL-USE flags via `LIST (SPECIAL-USE) "" "*"`, or null if
+     * the server rejects the SPECIAL-USE extension outright (as opposed to just returning zero
+     * flagged folders, which is a normal, valid response for a server that supports the
+     * extension but doesn't tag anything).
+     */
+    private fun listFoldersWithSpecialUse(): List<ImapListedFolder>? {
+        val tag = nextTag()
+        sendCommand(tag, """LIST (SPECIAL-USE) "" "*"""")
+
+        val folders = mutableListOf<ImapListedFolder>()
+        return try {
+            readUntilTagged(tag) { line -> parseListLine(line)?.let(folders::add) }
+            folders
+        } catch (e: ImapCommandException) {
+            null
+        }
+    }
+
+    /** Package-visible for testing against canned LIST responses without a network call. */
+    internal fun parseListLine(line: String): ImapListedFolder? {
+        val match = LIST_LINE_REGEX.find(line) ?: return null
+        val flags = match.groupValues[1].split(" ").filter { it.isNotBlank() }.toSet()
+        val rawName = match.groupValues[3].trim()
+        val name = if (rawName.startsWith("\"") && rawName.endsWith("\"")) {
+            rawName.removeSurrounding("\"").replace("\\\"", "\"").replace("\\\\", "\\")
+        } else {
+            rawName
+        }
+        return ImapListedFolder(name, flags)
     }
 
     /**

@@ -57,16 +57,25 @@ class MailAccountSettingsViewModel(
 
     /**
      * Turning a folder on resolves its provider-specific IMAP name the first time (see
-     * [ImapClient.resolveFolder]) and caches it; later toggles just flip [MailFolderState.shown].
-     * Turning one off never needs the network.
+     * [ImapClient.resolveSpecialUseFolder]) and caches it; later toggles just flip
+     * [MailFolderState.shown]. Turning one off clears the cached name rather than just hiding
+     * it, so if the resolved folder ever goes stale (renamed or deleted on the server), turning
+     * it off and back on re-resolves it instead of repeating the same failure.
      */
     fun setFolderShown(type: MailSpecialFolderType, shown: Boolean) {
         val current = _account.value ?: return
         val existingState = current.folderState(type)
 
-        if (!shown || existingState.resolvedName != null) {
+        if (!shown) {
             viewModelScope.launch(Dispatchers.IO) {
-                persistFolderState(type, existingState.copy(shown = shown))
+                persistFolderState(type, MailFolderState(shown = false, resolvedName = null))
+            }
+            return
+        }
+
+        if (existingState.resolvedName != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                persistFolderState(type, existingState.copy(shown = true))
             }
             return
         }
@@ -78,7 +87,7 @@ class MailAccountSettingsViewModel(
             try {
                 client.connect()
                 client.loginFor(current, accountRepository)
-                val resolved = client.resolveFolder(type.candidates)
+                val resolved = client.resolveSpecialUseFolder(type.specialUseFlag, type.candidates)
                 if (resolved != null) {
                     persistFolderState(type, MailFolderState(shown = true, resolvedName = resolved))
                 } else {
