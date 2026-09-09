@@ -48,6 +48,10 @@ class MailConfirmDeleteMessageScreen(
         lightContext.buildDatabase(MailDatabase::class.java, MailAccountRepository.DATABASE_NAME, MAIL_DATABASE_MIGRATIONS)
     }
 
+    /** Null when there's no Trash folder to move into, or when [folder] already is that folder. */
+    private val trashFolderName: String?
+        get() = account.trashFolder.resolvedName?.takeIf { it != folder.imapName }
+
     @Composable
     override fun Content() {
         val themeColors by LightThemeController.colors.collectAsState()
@@ -76,7 +80,11 @@ class MailConfirmDeleteMessageScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         LightText(
-                            text = "Delete this message? It can't be undone from here.",
+                            text = if (trashFolderName != null) {
+                                "Delete this message? It'll be moved to Trash."
+                            } else {
+                                "Delete this message? It can't be undone from here."
+                            },
                             variant = LightTextVariant.Copy,
                             align = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
@@ -97,7 +105,12 @@ class MailConfirmDeleteMessageScreen(
                                                 client.connect()
                                                 client.loginFor(account, accountRepository)
                                                 client.selectFolder(folder.imapName)
-                                                client.deleteMessage(summary.uid)
+                                                val destination = trashFolderName
+                                                if (destination != null) {
+                                                    client.moveMessage(summary.uid, destination)
+                                                } else {
+                                                    client.deleteMessage(summary.uid)
+                                                }
                                             }
                                             goBack(true)
                                         } catch (e: Exception) {

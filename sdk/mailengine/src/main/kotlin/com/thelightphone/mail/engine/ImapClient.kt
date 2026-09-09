@@ -240,12 +240,31 @@ class ImapClient(
     }
 
     /**
-     * Permanently deletes the message with the given UID: flags it `\Deleted`, then expunges.
-     * Uses plain `EXPUNGE` rather than `UID EXPUNGE` (a UIDPLUS extension not guaranteed to be
-     * present), so this also removes any other message a caller happened to flag `\Deleted` -
-     * harmless here since nothing else in this client ever sets that flag.
+     * Permanently deletes the message with the given UID from the currently selected folder:
+     * flags it `\Deleted`, then expunges. Uses plain `EXPUNGE` rather than `UID EXPUNGE` (a
+     * UIDPLUS extension not guaranteed to be present), so this also removes any other message a
+     * caller happened to flag `\Deleted` - harmless here since nothing else in this client ever
+     * sets that flag outside of this same expunge step.
      */
     suspend fun deleteMessage(uid: Long) = withContext(Dispatchers.IO) {
+        expungeFromCurrentFolder(uid)
+    }
+
+    /**
+     * Moves the message with the given UID into [destinationFolder]: copies it there, then
+     * removes it from the currently selected folder the same way [deleteMessage] does. This is
+     * the standard manual "move" recipe for servers that don't support the MOVE extension
+     * (RFC 6851) - COPY, flag `\Deleted`, EXPUNGE - rather than relying on that extension.
+     */
+    suspend fun moveMessage(uid: Long, destinationFolder: String) = withContext(Dispatchers.IO) {
+        val copyTag = nextTag()
+        sendCommand(copyTag, "UID COPY $uid ${quote(destinationFolder)}")
+        readUntilTagged(copyTag)
+
+        expungeFromCurrentFolder(uid)
+    }
+
+    private fun expungeFromCurrentFolder(uid: Long) {
         val storeTag = nextTag()
         sendCommand(storeTag, "UID STORE $uid +FLAGS (\\Deleted)")
         readUntilTagged(storeTag)
