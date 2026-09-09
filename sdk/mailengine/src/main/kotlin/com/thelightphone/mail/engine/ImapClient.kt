@@ -20,10 +20,12 @@ data class ImapMessageSummary(
 class ImapCommandException(message: String) : Exception(message)
 
 /**
- * A minimal, narrowly-scoped IMAP4rev1 (RFC 3501) client: connect, log in, list an
- * inbox's most recent messages, and fetch one message's plain-text body.
+ * A minimal, narrowly-scoped IMAP4rev1 (RFC 3501) client: connect, log in, list a folder's most
+ * recent messages, and fetch one message's plain-text body.
  *
- * No IDLE/push, no folder management beyond INBOX, no multipart/attachment handling.
+ * No IDLE/push, no multipart/attachment handling. Folder support is limited to SELECTing a
+ * folder by name - there's no LIST command, so [resolveFolder] guesses a provider's name for a
+ * special-use folder (Sent, Drafts, Trash) from a candidate list instead of asking the server.
  */
 class ImapClient(
     private val host: String,
@@ -81,10 +83,10 @@ class ImapClient(
         }
     }
 
-    /** Selects INBOX and returns the number of messages in it. */
-    suspend fun selectInbox(): Int = withContext(Dispatchers.IO) {
+    /** Selects the given folder (e.g. "INBOX") and returns the number of messages in it. */
+    suspend fun selectFolder(folderName: String): Int = withContext(Dispatchers.IO) {
         val tag = nextTag()
-        sendCommand(tag, "SELECT INBOX")
+        sendCommand(tag, "SELECT ${quote(folderName)}")
         var messageCount = 0
         val existsRegex = Regex("""^\* (\d+) EXISTS""")
         readUntilTagged(tag) { line ->
@@ -92,6 +94,49 @@ class ImapClient(
         }
         messageCount
     }
+
+    /**
+     * Tries each candidate name in order and returns the first that SELECTs successfully, or
+     * null if none exist. There's no LIST command here, so this is how a provider's name for a
+     * special-use folder (Sent, Drafts, Trash) gets guessed instead of discovered - it won't
+     * find an uncommonly-named folder.
+     */
+    suspend fun resolveFolder(candidates: List<String>): String? = withContext(Dispatchers.IO) {
+        for (candidate in candidates) {
+            val tag = nextTag()
+            sendCommand(tag, "SELECT ${quote(candidate)}")
+            val found = try {
+                readUntilTagged(tag)
+                true
+            } catch (e: ImapCommandException) {
+                false
+            }
+            if (found) return@withContext candidate
+        }
+        null
+    }
+
+    /**
+     * Appends a raw RFC 5322 message (see [RawMessageBuilder]) to [folderName], e.g. saving a
+     * draft. [flags] is an IMAP flag list like `\Draft`; pass an empty string for none.
+     */
+    suspend fun appendMessage(folderName: String, rawMessage: String, flags: String = "") =
+        withContext(Dispatchers.IO) {
+            val bytes = rawMessage.toByteArray(Charsets.UTF_8)
+            val tag = nextTag()
+            val flagPart = if (flags.isBlank()) "" else " ($flags)"
+            sendCommand(tag, "APPEND ${quote(folderName)}$flagPart {${bytes.size}}")
+
+            val continuation = reader.readLine() ?: throw ImapCommandException("Connection closed mid-response")
+            if (!continuation.startsWith("+")) {
+                throw ImapCommandException("Server didn't accept APPEND literal: $continuation")
+            }
+
+            writer.write(bytes)
+            writer.write("\r\n".toByteArray(Charsets.UTF_8))
+            writer.flush()
+            readUntilTagged(tag)
+        }
 
     /**
      * Fetches summaries for the given 1-based sequence range (e.g. "12:20"), newest last,
@@ -127,6 +172,17 @@ class ImapClient(
             ImapFetchParser.parseHeaderFields(line)?.let { headers = RawHeaders.parse(it) }
         }
         MimeBodyParser.extractReadableText(rawBody, headers)
+    }
+
+    /**
+     * Marks the message with the given UID `\Seen`. [fetchPlainTextBody] deliberately uses
+     * `BODY.PEEK` so reading a body never has this side effect on its own - callers that want
+     * standard "opening a message marks it read" behavior call this separately.
+     */
+    suspend fun markSeen(uid: Long) = withContext(Dispatchers.IO) {
+        val tag = nextTag()
+        sendCommand(tag, "UID STORE $uid +FLAGS (\\Seen)")
+        readUntilTagged(tag)
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.thelightphone.mail
 
 import androidx.lifecycle.viewModelScope
+import com.thelightphone.mail.engine.ImapClient
 import com.thelightphone.sdk.LightViewModel
 import com.thelightphone.sdk.SimpleLightScreen
 import kotlinx.coroutines.Dispatchers
@@ -42,5 +43,62 @@ class MailAccountSettingsViewModel(
             accountRepository.updateNotificationsEnabled(accountId, enabled)
             _account.value = accountRepository.getAccount(accountId)
         }
+    }
+
+    private val _resolvingFolder = MutableStateFlow<MailSpecialFolderType?>(null)
+    val resolvingFolder: StateFlow<MailSpecialFolderType?> = _resolvingFolder.asStateFlow()
+
+    private val _folderToggleError = MutableStateFlow<String?>(null)
+    val folderToggleError: StateFlow<String?> = _folderToggleError.asStateFlow()
+
+    fun dismissFolderToggleError() {
+        _folderToggleError.value = null
+    }
+
+    /**
+     * Turning a folder on resolves its provider-specific IMAP name the first time (see
+     * [ImapClient.resolveFolder]) and caches it; later toggles just flip [MailFolderState.shown].
+     * Turning one off never needs the network.
+     */
+    fun setFolderShown(type: MailSpecialFolderType, shown: Boolean) {
+        val current = _account.value ?: return
+        val existingState = current.folderState(type)
+
+        if (!shown || existingState.resolvedName != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                persistFolderState(type, existingState.copy(shown = shown))
+            }
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _resolvingFolder.value = type
+            _folderToggleError.value = null
+            val client = ImapClient(current.imapHost, current.imapPort)
+            try {
+                client.connect()
+                client.loginFor(current, accountRepository)
+                val resolved = client.resolveFolder(type.candidates)
+                if (resolved != null) {
+                    persistFolderState(type, MailFolderState(shown = true, resolvedName = resolved))
+                } else {
+                    _folderToggleError.value = "Couldn't find a ${type.label} folder for this account"
+                }
+            } catch (e: Exception) {
+                _folderToggleError.value = e.message ?: "Couldn't check for a ${type.label} folder"
+            } finally {
+                client.logout()
+                _resolvingFolder.value = null
+            }
+        }
+    }
+
+    private suspend fun persistFolderState(type: MailSpecialFolderType, state: MailFolderState) {
+        when (type) {
+            MailSpecialFolderType.SENT -> accountRepository.updateSentFolder(accountId, state)
+            MailSpecialFolderType.DRAFTS -> accountRepository.updateDraftsFolder(accountId, state)
+            MailSpecialFolderType.TRASH -> accountRepository.updateTrashFolder(accountId, state)
+        }
+        _account.value = accountRepository.getAccount(accountId)
     }
 }

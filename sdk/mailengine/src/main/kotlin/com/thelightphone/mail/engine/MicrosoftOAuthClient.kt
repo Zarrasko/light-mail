@@ -164,7 +164,7 @@ class MicrosoftOAuthClient(private val clientId: String) {
 }
 
 /** Pulls flat string/number fields out of a JSON object without a parsing dependency. */
-internal object MinimalJson {
+object MinimalJson {
     fun getString(json: String, key: String): String? {
         val regex = Regex(""""${Regex.escape(key)}"\s*:\s*"((?:[^"\\]|\\.)*)"""")
         return regex.find(json)?.groupValues?.get(1)?.let(::unescape)

@@ -40,6 +40,7 @@ import kotlinx.coroutines.withContext
 class MailConfirmDeleteMessageScreen(
     sealedActivity: SealedLightActivity,
     private val account: MailAccount,
+    private val folder: MailFolder,
     private val summary: ImapMessageSummary,
 ) : SimpleLightScreen<Boolean>(sealedActivity) {
 
@@ -95,7 +96,7 @@ class MailConfirmDeleteMessageScreen(
                                             withContext(Dispatchers.IO) {
                                                 client.connect()
                                                 client.loginFor(account, accountRepository)
-                                                client.selectInbox()
+                                                client.selectFolder(folder.imapName)
                                                 client.deleteMessage(summary.uid)
                                             }
                                             goBack(true)

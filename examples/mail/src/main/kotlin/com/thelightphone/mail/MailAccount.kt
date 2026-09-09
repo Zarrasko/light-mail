@@ -16,4 +16,7 @@ data class MailAccount(
     val authType: MailAuthType = MailAuthType.PASSWORD,
     /** Only set when [authType] is [MailAuthType.MICROSOFT_OAUTH]; access tokens aren't persisted. */
     val microsoftRefreshToken: String = "",
+    val sentFolder: MailFolderState = MailFolderState(),
+    val draftsFolder: MailFolderState = MailFolderState(),
+    val trashFolder: MailFolderState = MailFolderState(),
 )

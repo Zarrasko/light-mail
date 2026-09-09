@@ -99,7 +99,11 @@ class MailAccountsScreen(sealedActivity: SealedLightActivity) :
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .lightClickable {
-                                        navigateTo(screenFactory = { MailInboxScreen(it, account) })
+                                        if (account.extraFolders().isEmpty()) {
+                                            navigateTo(screenFactory = { MailInboxScreen(it, account) })
+                                        } else {
+                                            navigateTo(screenFactory = { MailAccountFoldersScreen(it, account) })
+                                        }
                                     }
                                     .padding(vertical = 0.75f.gridUnitsAsDp()),
                             )

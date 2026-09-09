@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 class MailInboxViewModel(
     private val account: MailAccount,
+    private val folder: MailFolder,
     private val settingsRepository: MailSettingsRepository,
     private val accountRepository: MailAccountRepository,
 ) : LightViewModel<Unit>() {
@@ -46,7 +47,7 @@ class MailInboxViewModel(
         try {
             client.connect()
             client.loginFor(account, accountRepository)
-            val messageCount = client.selectInbox()
+            val messageCount = client.selectFolder(folder.imapName)
 
             val globalDefault = settingsRepository.defaultMessageLimit.first()
             val limit = MailInboxFetchPlanner.effectiveLimit(account.messageLimitOverride, globalDefault)

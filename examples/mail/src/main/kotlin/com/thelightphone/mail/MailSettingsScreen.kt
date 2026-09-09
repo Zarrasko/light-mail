@@ -2,6 +2,7 @@ package com.thelightphone.mail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import com.thelightphone.sdk.LightScreen
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.ui.LightBarButton
+import com.thelightphone.sdk.ui.LightFullscreenModal
 import com.thelightphone.sdk.ui.LightIcon
 import com.thelightphone.sdk.ui.LightIcons
 import com.thelightphone.sdk.ui.LightScrollView
@@ -41,43 +43,68 @@ class MailSettingsScreen(sealedActivity: SealedLightActivity) :
         val themeColors by LightThemeController.colors.collectAsState()
         val messageLimit by viewModel.messageLimit.collectAsState()
         val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
+        val isCheckingForUpdate by viewModel.isCheckingForUpdate.collectAsState()
+        val updateCheckMessage by viewModel.updateCheckMessage.collectAsState()
 
         LightTheme(colors = themeColors) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(LightThemeTokens.colors.background),
-            ) {
-                LightTopBar(
-                    leftButton = LightBarButton.LightIcon(icon = LightIcons.BACK, onClick = { goBack(Unit) }),
-                    center = LightTopBarCenter.Text("Settings"),
-                    modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
-                )
-
-                LightScrollView(
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 1f.gridUnitsAsDp()),
+                        .fillMaxSize()
+                        .background(LightThemeTokens.colors.background),
                 ) {
-                    Column(
+                    LightTopBar(
+                        leftButton = LightBarButton.LightIcon(icon = LightIcons.BACK, onClick = { goBack(Unit) }),
+                        center = LightTopBarCenter.Text("Settings"),
+                        modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
+                    )
+
+                    LightScrollView(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .lightClickable {
-                                navigateTo(screenFactory = {
-                                    MailMessageLimitScreen(it, currentSelection = messageLimit)
-                                }) { selected -> selected?.let(viewModel::setMessageLimit) }
-                            }
-                            .padding(vertical = 0.75f.gridUnitsAsDp()),
+                            .padding(horizontal = 1f.gridUnitsAsDp()),
                     ) {
-                        LightText(text = "Messages to show", variant = LightTextVariant.Subheading)
-                        LightText(text = messageLimit.label, variant = LightTextVariant.Copy)
-                    }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .lightClickable {
+                                    navigateTo(screenFactory = {
+                                        MailMessageLimitScreen(it, currentSelection = messageLimit)
+                                    }) { selected -> selected?.let(viewModel::setMessageLimit) }
+                                }
+                                .padding(vertical = 0.75f.gridUnitsAsDp()),
+                        ) {
+                            LightText(text = "Messages to show", variant = LightTextVariant.Subheading)
+                            LightText(text = messageLimit.label, variant = LightTextVariant.Copy)
+                        }
 
-                    ToggleRow(
-                        label = "Notifications",
-                        enabled = notificationsEnabled,
-                        onToggle = { viewModel.setNotificationsEnabled(!notificationsEnabled) },
-                    )
+                        ToggleRow(
+                            label = "Notifications",
+                            enabled = notificationsEnabled,
+                            onToggle = { viewModel.setNotificationsEnabled(!notificationsEnabled) },
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .lightClickable { viewModel.checkForUpdate() }
+                                .padding(vertical = 0.75f.gridUnitsAsDp()),
+                        ) {
+                            LightText(text = "Version", variant = LightTextVariant.Subheading)
+                            LightText(
+                                text = if (isCheckingForUpdate) {
+                                    "Checking…"
+                                } else {
+                                    "v${BuildConfig.VERSION_NAME} - tap to check for updates"
+                                },
+                                variant = LightTextVariant.Copy,
+                            )
+                        }
+                    }
+                }
+
+                updateCheckMessage?.let { message ->
+                    LightFullscreenModal(message = message, onClose = viewModel::dismissUpdateCheckMessage)
                 }
             }
         }

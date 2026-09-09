@@ -53,7 +53,10 @@ class MailComposeScreen(
 
         fun editField(title: String, currentValue: String, compact: Boolean = false, onResult: (String) -> Unit) {
             navigateTo(screenFactory = {
-                MailTextEditScreen(it, MailFieldEditRequest(title, currentValue, useCompactTextSize = compact))
+                MailTextEditScreen(
+                    it,
+                    MailFieldEditRequest(title, currentValue, useCompactTextSize = compact, useComposeStyleActions = true),
+                )
             }) { result -> result?.let(onResult) }
         }
 
@@ -65,8 +68,15 @@ class MailComposeScreen(
                         .background(LightThemeTokens.colors.background),
                 ) {
                     LightTopBar(
-                        leftButton = LightBarButton.LightIcon(icon = LightIcons.BACK, onClick = { goBack(Unit) }),
+                        leftButton = LightBarButton.LightIcon(
+                            icon = LightIcons.BACK,
+                            onClick = { viewModel.cancel(onDone = { goBack(Unit) }) },
+                        ),
                         center = LightTopBarCenter.Text("New Message"),
+                        rightButton = LightBarButton.LightIcon(
+                            icon = LightIcons.SEND,
+                            onClick = { viewModel.send(onSent = { goBack(Unit) }) },
+                        ),
                         modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
                     )
 
@@ -91,9 +101,11 @@ class MailComposeScreen(
 
                     LightBottomBar(
                         listOf(
+                            null,
                             LightBarButton.LightIcon(
-                                icon = LightIcons.SEND,
-                                onClick = { viewModel.send(onSent = { goBack(Unit) }) },
+                                icon = LightIcons.CLOSE,
+                                onClick = { viewModel.cancel(onDone = { goBack(Unit) }) },
+                                contentDescription = "Cancel",
                             ),
                         ),
                     )

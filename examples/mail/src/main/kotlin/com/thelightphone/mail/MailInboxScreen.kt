@@ -33,6 +33,7 @@ import com.thelightphone.sdk.ui.lightClickable
 class MailInboxScreen(
     sealedActivity: SealedLightActivity,
     private val account: MailAccount,
+    private val folder: MailFolder = MailFolder.INBOX,
 ) : LightScreen<Unit, MailInboxViewModel>(sealedActivity) {
 
     private val accountRepository = MailAccountRepository.getInstance {
@@ -43,7 +44,7 @@ class MailInboxScreen(
         get() = MailInboxViewModel::class.java
 
     override fun createViewModel() =
-        MailInboxViewModel(account, MailSettingsRepository.from(lightContext), accountRepository)
+        MailInboxViewModel(account, folder, MailSettingsRepository.from(lightContext), accountRepository)
 
     @Composable
     override fun Content() {
@@ -61,7 +62,9 @@ class MailInboxScreen(
                 ) {
                     LightTopBar(
                         leftButton = LightBarButton.LightIcon(icon = LightIcons.BACK, onClick = { goBack(Unit) }),
-                        center = LightTopBarCenter.Text(account.email),
+                        center = LightTopBarCenter.Text(
+                            if (folder == MailFolder.INBOX) account.email else folder.label,
+                        ),
                         rightButton = LightBarButton.LightIcon(
                             icon = LightIcons.SETTINGS,
                             onClick = {
@@ -98,7 +101,7 @@ class MailInboxScreen(
                                     modifier = Modifier
                                         .lightClickable {
                                             navigateTo(screenFactory = {
-                                                MailMessageScreen(it, account, summary)
+                                                MailMessageScreen(it, account, folder, summary)
                                             }) { deleted -> if (deleted) viewModel.reload() }
                                         }
                                         .padding(vertical = 0.75f.gridUnitsAsDp()),
@@ -135,8 +138,9 @@ class MailInboxScreen(
 @Composable
 private fun MessageRow(summary: ImapMessageSummary, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
+        val fromLabel = summary.from.ifBlank { "(unknown sender)" }
         LightText(
-            text = summary.from.ifBlank { "(unknown sender)" },
+            text = if (summary.isSeen) fromLabel else "* $fromLabel",
             variant = if (summary.isSeen) LightTextVariant.Copy else LightTextVariant.Subheading,
         )
         LightText(

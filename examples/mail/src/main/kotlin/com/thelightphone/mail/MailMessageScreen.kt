@@ -29,6 +29,7 @@ import com.thelightphone.sdk.ui.gridUnitsAsDp
 class MailMessageScreen(
     sealedActivity: SealedLightActivity,
     private val account: MailAccount,
+    private val folder: MailFolder,
     private val summary: ImapMessageSummary,
 ) : LightScreen<Boolean, MailMessageViewModel>(sealedActivity) {
 
@@ -39,7 +40,7 @@ class MailMessageScreen(
     override val viewModelClass: Class<MailMessageViewModel>
         get() = MailMessageViewModel::class.java
 
-    override fun createViewModel() = MailMessageViewModel(account, summary.uid, accountRepository)
+    override fun createViewModel() = MailMessageViewModel(account, folder, summary.uid, accountRepository)
 
     @Composable
     override fun Content() {
@@ -96,7 +97,7 @@ class MailMessageScreen(
                             icon = LightIcons.TRASH,
                             onClick = {
                                 navigateTo(screenFactory = {
-                                    MailConfirmDeleteMessageScreen(it, account, summary)
+                                    MailConfirmDeleteMessageScreen(it, account, folder, summary)
                                 }) { deleted -> if (deleted) goBack(true) }
                             },
                         ),

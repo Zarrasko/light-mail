@@ -59,9 +59,16 @@ fun LightTextInputEditor(
     modifier: Modifier = Modifier,
     submitLabel: String = "SUBMIT",
     submitIcon: LightIconConfiguration? = null,
+    /** When true, the submit control moves to the top bar's right slot instead of the bottom
+     *  bar, leaving the bottom bar's right slot for [onCancel]/[cancelIcon] instead. */
+    submitInTopBar: Boolean = false,
+    onCancel: (() -> Unit)? = null,
+    cancelIcon: LightIconConfiguration = LightIcons.CLOSE,
     showBackButton: Boolean = true,
     singleLine: Boolean = false,
     initialCaps: Boolean = false,
+    /** Off for a long-form "blank canvas" field where an underline would just be visual noise. */
+    showUnderline: Boolean = true,
     editorKey: Any = remember { Any() },
     textStyle: TextStyle = lightInputTextStyle(),
 ) {
@@ -94,8 +101,12 @@ fun LightTextInputEditor(
         modifier,
         submitLabel,
         submitIcon,
+        submitInTopBar,
+        onCancel,
+        cancelIcon,
         showBackButton,
         singleLine,
+        showUnderline,
         textStyle,
     )
 }
@@ -104,7 +115,7 @@ fun LightTextInputEditor(
  * Full-screen text entry matching LightOS `DisplayWithKeyboardPortrait`
  *
  * - Top bar with back button + title
- * - Remaining space shows underlined heading-style input (top-aligned)
+ * - Remaining space shows heading-style input (top-aligned), underlined by default
  * - Embedded LP3 keyboard, and [LightBottomBar] below it
  */
 @Composable
@@ -117,8 +128,12 @@ fun LightTextInputEditor(
     modifier: Modifier = Modifier,
     submitLabel: String = "SUBMIT",
     submitIcon: LightIconConfiguration? = null,
+    submitInTopBar: Boolean = false,
+    onCancel: (() -> Unit)? = null,
+    cancelIcon: LightIconConfiguration = LightIcons.CLOSE,
     showBackButton: Boolean = true,
     singleLine: Boolean = false,
+    showUnderline: Boolean = true,
     textStyle: TextStyle = lightInputTextStyle(),
 ) {
     val colors = LightThemeTokens.colors
@@ -139,6 +154,7 @@ fun LightTextInputEditor(
                     null
                 },
                 center = LightTopBarCenter.Text(title),
+                rightButton = if (submitInTopBar) submitButton(submitIcon, submitLabel) { onSubmit(state.text) } else null,
                 modifier = Modifier.padding(bottom = 1f.gridUnitsAsDp()),
             )
 
@@ -181,17 +197,19 @@ fun LightTextInputEditor(
                         overflow = if (singleLine) TextOverflow.StartEllipsis else TextOverflow.Clip,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(
-                        modifier = Modifier.height(
-                            INPUT_UNDERLINE_GAP_GRID_UNITS.gridUnitsAsDp(),
-                        ),
-                    )
-                    Spacer(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(INPUT_UNDERLINE_THICKNESS_PX.designVerticalPxToDp())
-                            .background(colors.content),
-                    )
+                    if (showUnderline) {
+                        Spacer(
+                            modifier = Modifier.height(
+                                INPUT_UNDERLINE_GAP_GRID_UNITS.gridUnitsAsDp(),
+                            ),
+                        )
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(INPUT_UNDERLINE_THICKNESS_PX.designVerticalPxToDp())
+                                .background(colors.content),
+                        )
+                    }
                 }
                 textLayout?.let { layout ->
                     val cursorPos = state.selection.min.coerceIn(0, layout.layoutInput.text.length)
@@ -218,25 +236,28 @@ fun LightTextInputEditor(
                 additionalBottomHeight = 5f.gridUnitsAsDp(),
                 bottomBar = {
                     LightBottomBar(
-                        items = listOf(
-                            when (submitIcon) {
-                                null -> LightBarButton.Text(
-                                    text = submitLabel,
-                                    onClick = { onSubmit(state.text) },
-                                )
-                                else -> LightBarButton.LightIcon(
-                                    icon = submitIcon,
-                                    onClick = { onSubmit(state.text) },
-                                    contentDescription = submitLabel,
-                                )
-                            },
-                        ),
+                        items = if (submitInTopBar) {
+                            listOf(
+                                null,
+                                onCancel?.let {
+                                    LightBarButton.LightIcon(icon = cancelIcon, onClick = it, contentDescription = "Cancel")
+                                },
+                            )
+                        } else {
+                            listOf(submitButton(submitIcon, submitLabel) { onSubmit(state.text) })
+                        },
                     )
                 }
             )
         }
     }
 }
+
+private fun submitButton(submitIcon: LightIconConfiguration?, submitLabel: String, onClick: () -> Unit): LightBarButton =
+    when (submitIcon) {
+        null -> LightBarButton.Text(text = submitLabel, onClick = onClick)
+        else -> LightBarButton.LightIcon(icon = submitIcon, onClick = onClick, contentDescription = submitLabel)
+    }
 
 private fun factory(
     callback: Lp3RepeatableKeyboardCallback,

@@ -49,6 +49,18 @@ class MailAccountRepository private constructor(
         dao.updateMicrosoftRefreshToken(id, cipher.encrypt(refreshToken))
     }
 
+    suspend fun updateSentFolder(id: Long, state: MailFolderState) {
+        dao.updateSentFolder(id, state.shown, state.resolvedName)
+    }
+
+    suspend fun updateDraftsFolder(id: Long, state: MailFolderState) {
+        dao.updateDraftsFolder(id, state.shown, state.resolvedName)
+    }
+
+    suspend fun updateTrashFolder(id: Long, state: MailFolderState) {
+        dao.updateTrashFolder(id, state.shown, state.resolvedName)
+    }
+
     private fun MailAccountEntity.toAccount() = MailAccount(
         id = id,
         email = email,
@@ -63,7 +75,12 @@ class MailAccountRepository private constructor(
         notificationsEnabled = notificationsEnabled,
         authType = MailAuthType.valueOf(authType),
         microsoftRefreshToken = encryptedMicrosoftRefreshToken?.let(cipher::decrypt).orEmpty(),
+        sentFolder = sentFolder.toState(),
+        draftsFolder = draftsFolder.toState(),
+        trashFolder = trashFolder.toState(),
     )
+
+    private fun MailFolderColumns.toState() = MailFolderState(shown = shown, resolvedName = resolvedName)
 
     companion object {
         const val DATABASE_NAME = "mail_account.db"

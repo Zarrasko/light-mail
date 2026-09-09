@@ -51,7 +51,7 @@ private suspend fun checkAccountForNewMail(
     try {
         client.connect()
         client.loginFor(account, repository)
-        val messageCount = client.selectInbox()
+        val messageCount = client.selectFolder("INBOX")
         if (messageCount == 0) return
 
         val start = maxOf(1, messageCount - CHECK_WINDOW_SIZE + 1)

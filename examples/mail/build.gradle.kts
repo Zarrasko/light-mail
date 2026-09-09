@@ -17,6 +17,12 @@ android {
         manifestPlaceholders["sdkVersion"] = property("sdkVersion") as String
     }
 
+    // For BuildConfig.VERSION_NAME, so the app can check its own installed version against the
+    // latest GitHub release without a runtime PackageManager query.
+    buildFeatures {
+        buildConfig = true
+    }
+
     signingConfigs {
         create("lightsdkDev") {
             storeFile = file("../../sdk/keys/lightsdk-dev.jks")

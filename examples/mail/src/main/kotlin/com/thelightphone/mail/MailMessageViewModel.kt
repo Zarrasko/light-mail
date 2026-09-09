@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 
 class MailMessageViewModel(
     private val account: MailAccount,
+    private val folder: MailFolder,
     private val uid: Long,
     private val accountRepository: MailAccountRepository,
 ) : LightViewModel<Boolean>() {
@@ -35,8 +36,11 @@ class MailMessageViewModel(
             try {
                 client.connect()
                 client.loginFor(account, accountRepository)
-                client.selectInbox()
+                client.selectFolder(folder.imapName)
                 _body.value = client.fetchPlainTextBody(uid)
+                // Best-effort: failing to flag the message read shouldn't surface as an error
+                // when the body itself loaded fine.
+                runCatching { client.markSeen(uid) }
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Couldn't load message"
             } finally {

@@ -1,6 +1,7 @@
 package com.thelightphone.mail
 
 import androidx.room.ColumnInfo
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -23,4 +24,13 @@ data class MailAccountEntity(
     @ColumnInfo(name = "auth_type", defaultValue = "PASSWORD") val authType: String = "PASSWORD",
     /** Encrypted like [encryptedPassword]; only set for [MailAuthType.MICROSOFT_OAUTH] accounts. */
     @ColumnInfo(name = "encrypted_microsoft_refresh_token") val encryptedMicrosoftRefreshToken: ByteArray? = null,
+    @Embedded(prefix = "sent_") val sentFolder: MailFolderColumns = MailFolderColumns(),
+    @Embedded(prefix = "drafts_") val draftsFolder: MailFolderColumns = MailFolderColumns(),
+    @Embedded(prefix = "trash_") val trashFolder: MailFolderColumns = MailFolderColumns(),
+)
+
+data class MailFolderColumns(
+    @ColumnInfo(name = "shown", defaultValue = "0") val shown: Boolean = false,
+    /** Cached result of [com.thelightphone.mail.engine.ImapClient.resolveFolder]. */
+    @ColumnInfo(name = "resolved_name") val resolvedName: String? = null,
 )

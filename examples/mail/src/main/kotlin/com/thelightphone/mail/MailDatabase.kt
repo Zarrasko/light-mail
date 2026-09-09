@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [MailAccountEntity::class], version = 4, exportSchema = false)
+@Database(entities = [MailAccountEntity::class], version = 5, exportSchema = false)
 abstract class MailDatabase : RoomDatabase() {
     abstract fun accountDao(): MailAccountDao
 }
@@ -26,6 +26,14 @@ val MAIL_DATABASE_MIGRATIONS: Array<Migration> = arrayOf(
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE mail_account ADD COLUMN auth_type TEXT NOT NULL DEFAULT 'PASSWORD'")
             db.execSQL("ALTER TABLE mail_account ADD COLUMN encrypted_microsoft_refresh_token BLOB")
+        }
+    },
+    object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            for (prefix in listOf("sent", "drafts", "trash")) {
+                db.execSQL("ALTER TABLE mail_account ADD COLUMN ${prefix}_shown INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE mail_account ADD COLUMN ${prefix}_resolved_name TEXT")
+            }
         }
     },
 )

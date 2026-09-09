@@ -29,4 +29,13 @@ interface MailAccountDao {
 
     @Query("UPDATE mail_account SET encrypted_microsoft_refresh_token = :token WHERE id = :id")
     suspend fun updateMicrosoftRefreshToken(id: Long, token: ByteArray)
+
+    @Query("UPDATE mail_account SET sent_shown = :shown, sent_resolved_name = :resolvedName WHERE id = :id")
+    suspend fun updateSentFolder(id: Long, shown: Boolean, resolvedName: String?)
+
+    @Query("UPDATE mail_account SET drafts_shown = :shown, drafts_resolved_name = :resolvedName WHERE id = :id")
+    suspend fun updateDraftsFolder(id: Long, shown: Boolean, resolvedName: String?)
+
+    @Query("UPDATE mail_account SET trash_shown = :shown, trash_resolved_name = :resolvedName WHERE id = :id")
+    suspend fun updateTrashFolder(id: Long, shown: Boolean, resolvedName: String?)
 }

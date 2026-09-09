@@ -1,6 +1,8 @@
 package com.thelightphone.mail
 
 import androidx.lifecycle.viewModelScope
+import com.thelightphone.mail.engine.ImapClient
+import com.thelightphone.mail.engine.RawMessageBuilder
 import com.thelightphone.mail.engine.SmtpClient
 import com.thelightphone.sdk.LightViewModel
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +67,42 @@ class MailComposeViewModel(
                 client.quit()
                 _isSending.value = false
             }
+        }
+    }
+
+    /**
+     * Best-effort: if this account has a Drafts folder enabled, saves the current form there
+     * before returning. Skips the network for an untouched form, and never blocks on or reports
+     * a save failure - cancelling should always succeed from the user's point of view.
+     */
+    fun cancel(onDone: () -> Unit) {
+        val current = _form.value
+        val isEmpty = current.to.isBlank() && current.subject.isBlank() && current.body.isBlank()
+        val draftsFolderName = account.draftsFolder.takeIf { it.shown }?.resolvedName
+
+        if (isEmpty || draftsFolderName == null) {
+            onDone()
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val client = ImapClient(account.imapHost, account.imapPort)
+            try {
+                client.connect()
+                client.loginFor(account, accountRepository)
+                val rawMessage = RawMessageBuilder.buildPlainText(
+                    from = account.email,
+                    to = current.to,
+                    subject = current.subject,
+                    body = current.body,
+                )
+                client.appendMessage(draftsFolderName, rawMessage, flags = "\\Draft")
+            } catch (e: Exception) {
+                // Best-effort - cancelling shouldn't get stuck behind a failed draft save.
+            } finally {
+                client.logout()
+            }
+            onDone()
         }
     }
 }
